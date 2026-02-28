@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('audio', file);
 
         try {
-            const response = await fetch('https://music-card-backend.onrender.com/api/upload-audio', {
+            const response = await fetch('/api/upload-audio', {
                 method: 'POST',
                 body: formData
             });
@@ -390,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Real AI Generation (Backend API) ---
     const generateSongVerse = async (name, occasion, prompt, mood) => {
         try {
-            const response = await fetch('https://music-card-backend.onrender.com/api/generate', {
+            const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentAudioUrl = audioUrl;
 
         // 3. Prepare Audio (via proxy to bypass strict CORS for visualizer)
-        bgAudio.src = `https://music-card-backend.onrender.com/api/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
+        bgAudio.src = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
         bgAudio.volume = 0.2; // Set low volume for the unmixed background preview
         bgAudio.load();
 
@@ -541,9 +541,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                // Ensure audio is loaded before playing
-                if (bgAudio.readyState === 0) {
-                    bgAudio.load();
+                // On iOS, changing the src of an audio tag that was already routed through 
+                // AudioContext can sometimes cause duplicate phantom audio layers.
+                // Re-loading carefully before play.
+                bgAudio.load();
+
+                // Small delay for iOS to properly buffer the new src before blindly playing
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                if (isIOS) {
+                    await new Promise(res => setTimeout(res, 200));
                 }
 
                 await bgAudio.play();
@@ -595,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const response = await fetch('https://music-card-backend.onrender.com/api/cards', {
+            const response = await fetch('/api/cards', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -607,9 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentCardId = result.id;
 
             let baseUrl = window.location.href.split('?')[0].split('#')[0];
-            if (baseUrl.startsWith('file://') || baseUrl.includes('localhost')) {
-                baseUrl = 'https://music-card-frontend.vercel.app/';
-            }
+            // Instead of forcing Vercel, allow localhost or Ngrok to stay what it is for testing
+            // If we absolutely must default, make sure it points to our render backend or current origin
 
             return `${baseUrl}?id=${currentCardId}`;
         } catch (error) {
@@ -672,10 +677,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Reset Logic ---
     createNewBtn.addEventListener('click', () => {
         // Stop audio
-        bgAudio.pause();
-        bgAudio.currentTime = 0;
+        if (bgAudio) {
+            bgAudio.pause();
+            bgAudio.removeAttribute('src'); // strictly stop downloading
+            bgAudio.load();
+        }
+        if (previewAudio) {
+            previewAudio.pause();
+            previewAudio.removeAttribute('src');
+        }
 
         isPlaying = false;
+        playIcon.classList.replace('ph-pause', 'ph-play');
+        playPauseBtn.classList.remove('pulse-glow');
         if (visualizerAnimationId) cancelAnimationFrame(visualizerAnimationId);
         canvasCtx.clearRect(0, 0, visualizer.width, visualizer.height);
 
@@ -706,7 +720,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // We must now fetch the mixed track first because we need to send a POST request with bgUrl
-            const response = await fetch('https://music-card-backend.onrender.com/api/mix-audio', {
+            // Backend will now upload to Supabase and return the public URL
+            const response = await fetch('/api/mix-audio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -720,18 +735,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error("Failed to mix track");
             }
 
-            // Convert response to a blob url for the audio element
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
+            const data = await response.json();
+            const mixUrl = data.mixUrl;
+
+            // Update currentAudioUrl so that sharing saves the mixed track!
+            currentAudioUrl = mixUrl;
 
             // Replace the background audio source with the new mixed track
-            bgAudio.src = blobUrl;
+            if (bgAudio) {
+                bgAudio.pause();
+                bgAudio.removeAttribute('src');
+                bgAudio.load();
+            }
+            if (previewAudio) {
+                previewAudio.pause();
+            }
 
-            // Start playing the single mixed track
-            await togglePlay(true);
+            bgAudio.src = mixUrl;
 
             // Important: we don't duck volume anymore because the server did it inside FFmpeg
             bgAudio.volume = 1.0;
+
+            // Start playing the single mixed track
+            await togglePlay(true);
 
             voiceBtn.innerHTML = '<i class="ph-bold ph-microphone-stage"></i> Пересоздать микс';
             voiceBtn.disabled = false;
@@ -755,8 +781,8 @@ document.addEventListener('DOMContentLoaded', () => {
         playingMelodyName.textContent = data.melodyText;
         currentAudioUrl = data.audioUrl;
 
-        bgAudio.src = `https://music-card-backend.onrender.com/api/audio-proxy?url=${encodeURIComponent(currentAudioUrl)}`;
-        bgAudio.volume = 0.2;
+        bgAudio.src = `/api/audio-proxy?url=${encodeURIComponent(currentAudioUrl)}`;
+        bgAudio.volume = 1.0; // Play saved card at full volume (mix is already ducked)
         bgAudio.load();
 
         loadingState.classList.add('hidden');
@@ -773,7 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.classList.add('hidden');
         loadingState.classList.remove('hidden');
 
-        fetch(`https://music-card-backend.onrender.com/api/cards/${cardId}`)
+        fetch(`/api/cards/${cardId}`)
             .then(res => {
                 if (!res.ok) throw new Error("Card not found");
                 return res.json();

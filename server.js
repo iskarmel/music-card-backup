@@ -247,7 +247,8 @@ app.post('/api/mix-audio', async (req, res) => {
         const voiceBuffer = Buffer.from(response.data);
 
         // We need temporary files since ffmpeg works best with files
-        const tmpDir = '/tmp'; // Render has a /tmp directory we can use
+        const os = await import('os');
+        const tmpDir = os.tmpdir();
         if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
         const uniqueId = uuidv4();
@@ -277,10 +278,6 @@ app.post('/api/mix-audio', async (req, res) => {
         // We duck the background music: volume 1.0 normally, but during voice it's 0.15
         console.log(`Mixing audio files with FFmpeg...`);
 
-        res.setHeader('Content-Type', 'audio/mpeg');
-        // If we want a file download, we use Content-Disposition:
-        // res.setHeader('Content-Disposition', 'attachment; filename="music-card.mp3"');
-
         const ffmpegCommand = ffmpeg()
             .input(bgPath)
             .input(voicePath)
@@ -292,14 +289,44 @@ app.post('/api/mix-audio', async (req, res) => {
             ])
             .outputOptions('-ac 2') // stereo
             .format('mp3')
-            .on('end', () => {
-                console.log('FFmpeg processing finished.');
-                // Cleanup temp files
+            .on('end', async () => {
+                console.log('FFmpeg processing finished. Uploading to Supabase...');
                 try {
-                    fs.unlinkSync(voicePath);
-                    fs.unlinkSync(bgPath);
-                    fs.unlinkSync(outPath);
-                } catch (e) { }
+                    const fileBuffer = fs.readFileSync(outPath);
+                    const uniqueFilename = `mix_${uuidv4()}.mp3`;
+                    const uploadUrl = `${supabaseUrl}/storage/v1/object/audio-uploads/${uniqueFilename}`;
+
+                    const supabaseResponse = await fetch(uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${supabaseKey}`,
+                            'apikey': supabaseKey,
+                            'Content-Type': 'audio/mpeg'
+                        },
+                        body: fileBuffer
+                    });
+
+                    if (!supabaseResponse.ok) {
+                        const errorText = await supabaseResponse.text();
+                        console.error(`Supabase upload failed: ${supabaseResponse.status} ${errorText}`);
+                        if (!res.headersSent) res.status(500).json({ error: 'Failed to upload mix' });
+                        return;
+                    }
+
+                    const publicUrl = `${supabaseUrl}/storage/v1/object/public/audio-uploads/${uniqueFilename}`;
+                    if (!res.headersSent) res.json({ mixUrl: publicUrl });
+
+                } catch (err) {
+                    console.error('Error uploading mix:', err);
+                    if (!res.headersSent) res.status(500).json({ error: 'Error uploading mix to storage' });
+                } finally {
+                    // Cleanup temp files
+                    try {
+                        if (fs.existsSync(voicePath)) fs.unlinkSync(voicePath);
+                        if (fs.existsSync(bgPath)) fs.unlinkSync(bgPath);
+                        if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+                    } catch (e) { console.error('Cleanup error:', e); }
+                }
             })
             .on('error', (err) => {
                 console.error('FFmpeg error:', err);
@@ -307,13 +334,14 @@ app.post('/api/mix-audio', async (req, res) => {
 
                 // Cleanup
                 try {
-                    fs.unlinkSync(voicePath);
-                    fs.unlinkSync(bgPath);
+                    if (fs.existsSync(voicePath)) fs.unlinkSync(voicePath);
+                    if (fs.existsSync(bgPath)) fs.unlinkSync(bgPath);
+                    if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
                 } catch (e) { }
             });
 
-        // Instead of writing to a file, pipe directly to the response
-        ffmpegCommand.pipe(res, { end: true });
+        // Save to file instead of piping
+        ffmpegCommand.save(outPath);
 
     } catch (error) {
         console.error('Error in mix-audio:', error);

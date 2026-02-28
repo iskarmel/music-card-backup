@@ -681,23 +681,27 @@ textarea {
 .voice-controls {
     display: flex;
     flex: 1;
-    min-width: 250px;
+    min-width: 100%;
     align-items: center;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
-    padding: 0 5px 0 15px;
+    padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
 }
 
 .voice-select {
     background: transparent;
     border: none;
-    color: var(--text-light);
+    color: var(--text-main);
     font-family: inherit;
     outline: none;
     cursor: pointer;
     flex: 1;
+    width: 0;
+    padding: 12px 10px;
     font-size: 0.95rem;
+    min-width: 100px;
 }
 
 .voice-select option {
@@ -706,8 +710,13 @@ textarea {
 }
 
 .voice-play-btn {
-    margin: 5px 0;
     white-space: nowrap;
+    border-radius: 0 12px 12px 0;
+    border-left: 1px solid var(--border);
+    margin: 0;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
 }
 
 .action-btn {
