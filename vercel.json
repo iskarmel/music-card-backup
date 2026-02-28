@@ -25,7 +25,7 @@
     "routes": [
         {
             "src": "/api/(.*)",
-            "dest": "https://music-card-backend.onrender.com/api/$1"
+            "dest": "https://music-card-backup.onrender.com/api/$1"
         },
         {
             "src": "/(.*)",
