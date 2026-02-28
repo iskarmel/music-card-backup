@@ -806,10 +806,16 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingState.classList.add('hidden');
         resultView.classList.remove('hidden');
 
-        // Receiver shouldn't see the voice controls at all, as they can't re-mix it
         // The main play button in the player UI will suffice.
         const voiceControls = document.querySelector('.voice-controls');
-        if (voiceControls) voiceControls.style.display = 'none';
+        if (voiceControls) {
+            voiceControls.style.display = 'none';
+            // Also forcefully hide children for aggressive cache bypass
+            const voiceBtnEl = document.getElementById('voice-btn');
+            const voiceSelectEl = document.getElementById('voice-select');
+            if (voiceBtnEl) voiceBtnEl.style.display = 'none';
+            if (voiceSelectEl) voiceSelectEl.style.display = 'none';
+        }
 
         document.body.classList.add('is-received-card');
         isReceivedCard = true;
