@@ -703,6 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const voiceControls = document.querySelector('.voice-controls');
         if (voiceControls) voiceControls.style.display = '';
 
+        document.body.classList.remove('is-received-card');
         isReceivedCard = false;
         currentCardId = null;
 
@@ -810,6 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const voiceControls = document.querySelector('.voice-controls');
         if (voiceControls) voiceControls.style.display = 'none';
 
+        document.body.classList.add('is-received-card');
         isReceivedCard = true;
     };
 

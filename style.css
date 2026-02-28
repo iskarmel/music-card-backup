@@ -690,6 +690,10 @@ textarea {
     overflow: hidden;
 }
 
+body.is-received-card .voice-controls {
+    display: none !important;
+}
+
 .voice-select {
     background: transparent;
     border: none;
