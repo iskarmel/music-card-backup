@@ -146,6 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             trackCatalogContainer.appendChild(trackItem);
         });
+
+        // Auto-select the first track by default if available
+        const firstTrackBtn = trackCatalogContainer.querySelector('.track-item');
+        if (firstTrackBtn) {
+            firstTrackBtn.click();
+        }
     };
 
     // Initialize catalog UI
