@@ -90,6 +90,31 @@ app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
         res.status(500).json({ error: 'Failed to upload audio to storage' });
     }
 });
+
+// Endpoint to fetch the dynamic catalog of beats from Supabase
+app.get('/api/beats', async (req, res) => {
+    try {
+        const supabaseResponse = await fetch(`${supabaseUrl}/rest/v1/beats?select=*`, {
+            method: 'GET',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+            }
+        });
+
+        if (!supabaseResponse.ok) {
+            const errorText = await supabaseResponse.text();
+            throw new Error(`Failed to fetch beats: ${supabaseResponse.status} ${errorText}`);
+        }
+
+        const beats = await supabaseResponse.json();
+        res.json(beats);
+    } catch (error) {
+        console.error('Error fetching beats from Supabase:', error);
+        res.status(500).json({ error: 'Failed to load audio catalog' });
+    }
+});
+
 app.get('/api/audio-proxy', (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('Missing URL');

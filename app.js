@@ -8,33 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const recipientInput = document.getElementById('recipient-name');
     const occasionInput = document.getElementById('occasion');
 
-    // Catalog Data
-    const TRACK_CATALOG = [
-        {
-            id: 'basta',
-            title: 'Лирический рэп (Тестовый минус)',
-            genre: 'Рэп / Хип-Хоп',
-            style: 'Баста (Лирический рэп)',
-            url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-            icon: 'ph-microphone-stage'
-        },
-        {
-            id: 'leps',
-            title: 'Рок-баллада (Тестовый минус)',
-            genre: 'Поп-рок / Эстрада',
-            style: 'Григорий Лепс (Рок-баллада, надрыв)',
-            url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-            icon: 'ph-guitar'
-        },
-        {
-            id: 'zhukov',
-            title: 'Танцевальный хит (Тестовый минус)',
-            genre: 'Поп / 90-е',
-            style: 'Руки Вверх / Поп-хит 90-х (Танцевальный)',
-            url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-            icon: 'ph-speaker-hifi'
-        }
-    ];
+    // Catalog Data (will be fetched from Supabase)
+    let TRACK_CATALOG = [];
 
     let selectedTrackId = null;
 
@@ -96,7 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let isReceivedCard = false; // Flag to identify if the user is viewing a card they didn't create
 
     // --- Render Track Catalog ---
-    const renderTrackCatalog = () => {
+    const renderTrackCatalog = async () => {
+        try {
+            const response = await fetch('/api/beats');
+            if (response.ok) {
+                TRACK_CATALOG = await response.json();
+            } else {
+                console.error("Failed to load catalog from DB");
+            }
+        } catch (e) {
+            console.error("Error fetching catalog:", e);
+        }
+
         trackCatalogContainer.innerHTML = '';
 
         TRACK_CATALOG.forEach(track => {
