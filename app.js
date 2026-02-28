@@ -700,6 +700,9 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceBtn.innerHTML = '<i class="ph-bold ph-microphone-stage"></i> Озвучить ИИ';
         voiceSelect.style.display = ''; // Show selector again if hidden
 
+        const voiceControls = document.querySelector('.voice-controls');
+        if (voiceControls) voiceControls.style.display = '';
+
         isReceivedCard = false;
         currentCardId = null;
 
@@ -802,13 +805,12 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingState.classList.add('hidden');
         resultView.classList.remove('hidden');
 
-        // Receiver shouldn't see the voice selector as they can't re-mix it
-        voiceSelect.style.display = 'none';
-        isReceivedCard = true;
+        // Receiver shouldn't see the voice controls at all, as they can't re-mix it
+        // The main play button in the player UI will suffice.
+        const voiceControls = document.querySelector('.voice-controls');
+        if (voiceControls) voiceControls.style.display = 'none';
 
-        // Suggest playing the voice immediately to the receiver
-        voiceBtn.classList.add('pulse-glow');
-        voiceBtn.innerHTML = '<i class="ph-bold ph-play-circle"></i> Нажмите, чтобы послушать ИИ';
+        isReceivedCard = true;
     };
 
     if (cardId) {
