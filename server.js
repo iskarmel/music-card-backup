@@ -30,12 +30,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Serve static frontend files from the current directory
-app.use(express.static(process.cwd()));
-
-// Explicitly serve index.html for the root route
+// Root route health check
 app.get('/', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'index.html'));
+    res.send('Music Card API is running!');
 });
 
 app.use((req, res, next) => {
