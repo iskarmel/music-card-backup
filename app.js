@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentAudioUrl = '';
     let currentCardId = null; // Store the ID if this card was loaded or already saved
     let previewAudio = null;
+    let isReceivedCard = false; // Flag to identify if the user is viewing a card they didn't create
 
     // --- Render Track Catalog ---
     const renderTrackCatalog = () => {
@@ -697,6 +698,10 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         socialPanel.classList.add('hidden');
         voiceBtn.innerHTML = '<i class="ph-bold ph-microphone-stage"></i> Озвучить ИИ';
+        voiceSelect.style.display = ''; // Show selector again if hidden
+
+        isReceivedCard = false;
+        currentCardId = null;
 
         // Switch Views
         resultView.classList.add('hidden');
@@ -705,6 +710,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Voice Synthesis Logic ---
     voiceBtn.addEventListener('click', async () => {
+        // If this is a received card, the audio is already mixed. 
+        // The button just acts as a play button.
+        if (isReceivedCard) {
+            await togglePlay();
+            voiceBtn.classList.remove('pulse-glow');
+            voiceBtn.innerHTML = '<i class="ph-bold ph-music-notes"></i> Играет песня...';
+            return;
+        }
+
         const textToSpeech = songLyrics.innerText.trim();
         if (!textToSpeech) return;
 
@@ -787,6 +801,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadingState.classList.add('hidden');
         resultView.classList.remove('hidden');
+
+        // Receiver shouldn't see the voice selector as they can't re-mix it
+        voiceSelect.style.display = 'none';
+        isReceivedCard = true;
 
         // Suggest playing the voice immediately to the receiver
         voiceBtn.classList.add('pulse-glow');
