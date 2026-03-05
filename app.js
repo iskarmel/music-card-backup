@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioFileInput = document.getElementById('audio-file');
     const uploadFilename = document.getElementById('upload-filename');
     const audioLinkInput = document.getElementById('audio-link');
+    const audioGeminiWrapper = document.getElementById('audio-gemini-wrapper');
+    const audioGeminiInput = document.getElementById('audio-gemini-file');
+    const uploadGeminiFilename = document.getElementById('upload-gemini-filename');
+    const lyricsSection = document.getElementById('lyrics-section');
 
     const dictationInput = document.getElementById('dictation');
     const dictationLabel = document.getElementById('dictation-label');
@@ -66,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let recognition = null;
     let isPlaying = false;
     let currentAudioUrl = '';
+    let originalAudioUrl = ''; // Keep track of the unmixed background
     let currentCardId = null; // Store the ID if this card was loaded or already saved
     let previewAudio = null;
     let isReceivedCard = false; // Flag to identify if the user is viewing a card they didn't create
@@ -76,6 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/beats');
             if (response.ok) {
                 TRACK_CATALOG = await response.json();
+                // Sort by uses_count descending
+                TRACK_CATALOG.sort((a, b) => (b.uses_count || 0) - (a.uses_count || 0));
             } else {
                 console.error("Failed to load catalog from DB");
             }
@@ -92,8 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             trackItem.innerHTML = `
                 <i class="ph ${track.icon} track-icon"></i>
-                <span class="track-title">${track.title}</span>
-                <span class="track-genre">${track.genre}</span>
+                <div style="flex: 1; min-width: 0;">
+                    <span class="track-title">${track.title}</span>
+                    <span class="track-genre">${track.genre} ${track.uses_count ? `(🔥 ${track.uses_count})` : ''}</span>
+                </div>
                 <button class="track-play-preview" aria-label="Preview" data-url="${track.url}">
                     <i class="ph-bold ph-play"></i> Слушать
                 </button>
@@ -310,6 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
             audioCatalogWrapper.classList.add('hidden');
             audioUploadWrapper.classList.add('hidden');
             audioLinkWrapper.classList.add('hidden');
+            audioGeminiWrapper.classList.add('hidden');
+
+            // Show/hide lyrics dictation section based on if it's a Gemini track
+            if (source === 'gemini') {
+                lyricsSection.classList.add('hidden');
+                dictationInput.removeAttribute('required');
+            } else {
+                lyricsSection.classList.remove('hidden');
+                dictationInput.setAttribute('required', 'required');
+            }
 
             if (source === 'catalog') {
                 audioCatalogWrapper.classList.remove('hidden');
@@ -317,6 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioUploadWrapper.classList.remove('hidden');
             } else if (source === 'link') {
                 audioLinkWrapper.classList.remove('hidden');
+            } else if (source === 'gemini') {
+                audioGeminiWrapper.classList.remove('hidden');
             }
         });
     });
@@ -329,6 +350,17 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             uploadFilename.innerHTML = 'Нажмите, чтобы выбрать .mp3 файл<br><small>(до 15 МБ)</small>';
             uploadFilename.style.color = '';
+        }
+    });
+
+    audioGeminiInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            uploadGeminiFilename.textContent = file.name;
+            uploadGeminiFilename.style.color = '#fff';
+        } else {
+            uploadGeminiFilename.innerHTML = 'Нажмите, чтобы выбрать готовый трек<br><small>(до 15 МБ)</small>';
+            uploadGeminiFilename.style.color = '';
         }
     });
 
@@ -446,9 +478,19 @@ document.addEventListener('DOMContentLoaded', () => {
             melodyText = file.name;
             style = 'Нейтральный стиль';
             audioUrl = 'pending_upload';
+        } else if (audioSource === 'gemini') {
+            const file = audioGeminiInput.files[0];
+            if (!file) {
+                alert('Пожалуйста, выберите готовый трек из Gemini/Suno');
+                return;
+            }
+            melodyText = file.name;
+            style = 'Свой трек';
+            audioUrl = 'pending_gemini_upload';
         }
 
-        if (!name || !occasion || !audioUrl || !dictation) return;
+        if (!name || !occasion) return;
+        if (audioSource !== 'gemini' && !dictation) return;
 
         // 1. Hide form, show loading
         form.classList.add('hidden');
@@ -460,6 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const origText = loadingText.textContent;
                 loadingText.textContent = 'Загружаем аудиофайл в облако...';
                 audioUrl = await uploadAudioFile(audioFileInput.files[0]);
+                loadingText.textContent = origText;
+            } else if (audioSource === 'gemini') {
+                const loadingText = loadingState.querySelector('.loader-text');
+                const origText = loadingText.textContent;
+                loadingText.textContent = 'Загружаем ваш готовый трек...';
+                audioUrl = await uploadAudioFile(audioGeminiInput.files[0]);
                 loadingText.textContent = origText;
             }
         } catch (e) {
@@ -473,7 +521,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const generationMode = document.querySelector('input[name="generation-mode"]:checked').value;
 
         let generatedLyrics = '';
-        if (generationMode === 'manual') {
+        if (audioSource === 'gemini') {
+            generatedLyrics = '🎵 Текст встроен в композицию';
+        } else if (generationMode === 'manual') {
             // Fake loading state slightly so it feels like it's processing
             await new Promise(r => setTimeout(r, 800));
             generatedLyrics = dictation;
@@ -482,10 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentAudioUrl = audioUrl;
+        originalAudioUrl = audioUrl; // Save the original to prevent layering on regenerate
 
         // 3. Prepare Audio (via proxy to bypass strict CORS for visualizer)
         bgAudio.src = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
-        bgAudio.volume = 0.2; // Set low volume for the unmixed background preview
+        bgAudio.volume = audioSource === 'gemini' ? 1.0 : 0.2; // Set low volume for the unmixed background preview, but full volume for ready Gemini tracks
         bgAudio.load();
 
         // 4. Update UI
@@ -497,6 +548,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 5. Hide loading, show result
         loadingState.classList.add('hidden');
         resultView.classList.remove('hidden');
+
+        // Make sure to hide AI Voice elements if this was a Gemini mix
+        const voiceControls = document.querySelector('.voice-controls');
+        if (audioSource === 'gemini') {
+            songLyrics.classList.add('hidden');
+            copyTextBtn.classList.add('hidden');
+            if (voiceControls) voiceControls.style.display = 'none';
+        } else {
+            songLyrics.classList.remove('hidden');
+            copyTextBtn.classList.remove('hidden');
+            if (voiceControls) voiceControls.style.display = 'flex';
+        }
 
         // Clear current card ID for new generations
         currentCardId = null;
@@ -605,6 +668,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             currentCardId = result.id;
 
+            // Immediately track beat usage if creating from catalog
+            const audioSourceStr = document.querySelector('input[name="audio-source"]:checked').value;
+            if (audioSourceStr === 'catalog') {
+                fetch(`/api/beats/${selectedTrackId}/use`, { method: 'POST' }).catch(e => console.error("Failed tracking usage", e));
+            }
+
             let baseUrl = window.location.href.split('?')[0].split('#')[0];
             // Instead of forcing Vercel, allow localhost or Ngrok to stay what it is for testing
             // If we absolutely must default, make sure it points to our render backend or current origin
@@ -688,6 +757,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset Form values
         form.reset();
+        uploadFilename.innerHTML = 'Нажмите, чтобы выбрать .mp3 файл<br><small>(до 15 МБ)</small>';
+        uploadFilename.style.color = '';
+        uploadGeminiFilename.innerHTML = 'Нажмите, чтобы выбрать готовый трек<br><small>(до 15 МБ)</small>';
+        uploadGeminiFilename.style.color = '';
         socialPanel.classList.add('hidden');
         voiceBtn.innerHTML = '<i class="ph-bold ph-microphone-stage"></i> Озвучить ИИ';
         voiceSelect.style.display = ''; // Show selector again if hidden
@@ -700,6 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCardId = null;
 
         // Switch Views
+        songLyrics.classList.remove('hidden');
         resultView.classList.add('hidden');
         form.classList.remove('hidden');
     });
@@ -737,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     text: textToSpeech,
                     voice: voiceSelect.value,
-                    bgUrl: currentAudioUrl
+                    bgUrl: originalAudioUrl || currentAudioUrl // Use original to prevent layering
                 })
             });
 
@@ -790,6 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
         songLyrics.textContent = data.lyrics;
         playingMelodyName.textContent = data.melodyText;
         currentAudioUrl = data.audioUrl;
+        originalAudioUrl = data.audioUrl; // Fallback for loaded cards
 
         bgAudio.src = `/api/audio-proxy?url=${encodeURIComponent(currentAudioUrl)}`;
         bgAudio.volume = 1.0; // Play saved card at full volume (mix is already ducked)
@@ -824,7 +899,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error("Card not found");
                 return res.json();
             })
-            .then(data => loadCardData(data))
+            .then(data => {
+                loadCardData(data);
+                // Background analytics tracking: increment view count
+                fetch(`/api/cards/${cardId}/view`, { method: 'POST' }).catch(e => console.error("Failed tracking view", e));
+            })
             .catch(e => {
                 console.error('Failed to fetch card data from URL', e);
                 loadingState.classList.add('hidden');

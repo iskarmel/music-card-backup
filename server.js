@@ -30,8 +30,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Root route health check
+// Serve static files from the current directory (frontend)
+app.use(express.static(path.resolve('.')));
+
+// Optional: Explicitly send index.html for the root route instead of the API running message
 app.get('/', (req, res) => {
+    res.sendFile(path.resolve('.', 'index.html'));
+});
+
+// Basic API health check
+app.get('/api/health', (req, res) => {
     res.send('Music Card API is running!');
 });
 
@@ -442,6 +450,86 @@ app.get('/api/cards/:id', async (req, res) => {
     } catch (error) {
         console.error('Error retrieving card:', error);
         res.status(500).json({ error: 'Failed to retrieve card' });
+    }
+});
+
+// Endpoint to track card views
+app.post('/api/cards/:id/view', async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // 1. Fetch current views
+        const fetchResponse = await fetch(`${supabaseUrl}/rest/v1/cards?id=eq.${id}&select=views`, {
+            method: 'GET',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+            }
+        });
+
+        if (!fetchResponse.ok) throw new Error('Failed to fetch current views');
+        const data = await fetchResponse.json();
+        if (!data || data.length === 0) return res.status(404).json({ error: 'Card not found' });
+
+        const currentViews = data[0].views || 0;
+
+        // 2. Update with incremented value
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/cards?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ views: currentViews + 1 })
+        });
+
+        if (!updateResponse.ok) throw new Error('Failed to update views');
+
+        res.json({ success: true, views: currentViews + 1 });
+    } catch (error) {
+        console.error('Error updating views:', error);
+        res.status(500).json({ error: 'Failed to update views' });
+    }
+});
+
+// Endpoint to track beat uses
+app.post('/api/beats/:id/use', async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // 1. Fetch current uses
+        const fetchResponse = await fetch(`${supabaseUrl}/rest/v1/beats?id=eq.${id}&select=uses_count`, {
+            method: 'GET',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+            }
+        });
+
+        if (!fetchResponse.ok) throw new Error('Failed to fetch current uses');
+        const data = await fetchResponse.json();
+        if (!data || data.length === 0) return res.status(404).json({ error: 'Beat not found' });
+
+        const currentUses = data[0].uses_count || 0;
+
+        // 2. Update with incremented value
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/beats?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ uses_count: currentUses + 1 })
+        });
+
+        if (!updateResponse.ok) throw new Error('Failed to update uses');
+
+        res.json({ success: true, uses_count: currentUses + 1 });
+    } catch (error) {
+        console.error('Error updating uses:', error);
+        res.status(500).json({ error: 'Failed to update uses' });
     }
 });
 

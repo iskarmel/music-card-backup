@@ -143,7 +143,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div id="lyrics-section" class="form-group">
                     <label id="dictation-label" for="dictation">Что пожелать? <span id="mic-badge"
                             class="badge">Голосовой ввод</span></label>
                     <p id="dictation-helper" class="helper-text">Надиктуйте суть поздравления, а ИИ превратит это в
@@ -168,8 +168,8 @@
                         <input type="radio" id="src-upload" name="audio-source" value="upload">
                         <label for="src-upload"><i class="ph ph-upload-simple"></i> Файл</label>
 
-                        <input type="radio" id="src-link" name="audio-source" value="link">
-                        <label for="src-link"><i class="ph ph-link"></i> Ссылка</label>
+                        <input type="radio" id="src-gemini" name="audio-source" value="gemini">
+                        <label for="src-gemini"><i class="ph ph-sparkle"></i> Свой трек</label>
                     </div>
 
                     <div id="audio-catalog-wrapper" class="audio-input-view">
@@ -194,6 +194,24 @@
                     <div id="audio-link-wrapper" class="input-wrapper audio-input-view hidden">
                         <i class="ph ph-link"></i>
                         <input type="url" id="audio-link" placeholder="Вставьте прямую ссылку на .mp3">
+                    </div>
+
+                    <div id="audio-gemini-wrapper" class="audio-upload-dropzone audio-input-view hidden">
+                        <p
+                            style="text-align: center; color: var(--text-secondary); margin-bottom: 10px; font-size: 0.9rem;">
+                            Загрузите готовую песню (например, из Gemini или Suno). Озвучка отключится, так как трек уже
+                            с вокалом.
+                        </p>
+                        <input type="file" id="audio-gemini-file" accept=".mp3, .wav, audio/mpeg, audio/wav"
+                            class="hidden" style="display: none;">
+                        <label for="audio-gemini-file" class="upload-label"
+                            style="cursor: pointer; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; background: rgba(0, 0, 0, 0.2); transition: all 0.3s ease;">
+                            <i class="ph ph-sparkle"
+                                style="font-size: 1.5rem; margin-bottom: 8px; color: var(--primary-light);"></i>
+                            <span id="upload-gemini-filename"
+                                style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 0 10px;">Нажмите,
+                                чтобы выбрать готовый трек<br><small>(до 15 МБ)</small></span>
+                        </label>
                     </div>
                 </div>
 
