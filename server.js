@@ -102,7 +102,14 @@ app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
 // Endpoint to fetch the dynamic catalog of beats from Supabase
 app.get('/api/beats', async (req, res) => {
     try {
-        const supabaseResponse = await fetch(`${supabaseUrl}/rest/v1/beats?select=*`, {
+        const includeHidden = req.query.includeHidden === 'true';
+        let queryUrl = `${supabaseUrl}/rest/v1/beats?select=*`;
+
+        if (!includeHidden) {
+            queryUrl += '&is_hidden=eq.false';
+        }
+
+        const supabaseResponse = await fetch(queryUrl, {
             method: 'GET',
             headers: {
                 'apikey': supabaseKey,

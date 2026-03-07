@@ -78,7 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Render Track Catalog ---
     const renderTrackCatalog = async () => {
         try {
-            const response = await fetch('/api/beats');
+            const isAdvanced = window.location.pathname.includes('advanced.html');
+            const url = isAdvanced ? '/api/beats?includeHidden=true' : '/api/beats';
+            const response = await fetch(url);
             if (response.ok) {
                 TRACK_CATALOG = await response.json();
                 // Sort by uses_count descending
@@ -94,13 +96,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         TRACK_CATALOG.forEach(track => {
             const trackItem = document.createElement('div');
-            trackItem.className = 'track-item';
+            trackItem.className = `track-item ${track.is_hidden ? 'is-hidden-track' : ''}`;
             trackItem.dataset.id = track.id;
 
             trackItem.innerHTML = `
                 <i class="ph ${track.icon} track-icon"></i>
                 <div style="flex: 1; min-width: 0;">
-                    <span class="track-title">${track.title}</span>
+                    <span class="track-title">${track.title} ${track.is_hidden ? '<span class="hidden-badge">СКРЫТ</span>' : ''}</span>
                     <span class="track-genre">${track.genre} ${track.uses_count ? `(🔥 ${track.uses_count})` : ''}</span>
                 </div>
                 <button class="track-play-preview" aria-label="Preview" data-url="${track.url}">
