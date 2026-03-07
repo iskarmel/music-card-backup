@@ -774,6 +774,11 @@ document.addEventListener('DOMContentLoaded', () => {
         isReceivedCard = false;
         currentCardId = null;
 
+        // Reset the button to original state
+        createNewBtn.textContent = 'Создать новую открытку';
+        createNewBtn.disabled = false;
+        createNewBtn.classList.remove('disabled-btn');
+
         // Fetch the catalog again in case new tracks were added
         renderTrackCatalog();
 
@@ -874,6 +879,16 @@ document.addEventListener('DOMContentLoaded', () => {
         playingMelodyName.textContent = data.melodyText;
         currentAudioUrl = data.audioUrl;
         originalAudioUrl = data.audioUrl; // Fallback for loaded cards
+
+        if (data.hideCreateBtn) {
+            createNewBtn.textContent = 'Опция появится позже';
+            createNewBtn.disabled = true;
+            createNewBtn.classList.add('disabled-btn');
+        } else {
+            createNewBtn.textContent = 'Создать новую открытку';
+            createNewBtn.disabled = false;
+            createNewBtn.classList.remove('disabled-btn');
+        }
 
         bgAudio.src = `/api/audio-proxy?url=${encodeURIComponent(currentAudioUrl)}`;
         bgAudio.volume = 1.0; // Play saved card at full volume (mix is already ducked)

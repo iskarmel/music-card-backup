@@ -407,7 +407,8 @@ app.post('/api/cards', async (req, res) => {
                 occasion: cardData.occasion,
                 lyrics: cardData.lyrics,
                 audio_url: cardData.audioUrl,
-                melody_text: cardData.melodyText
+                melody_text: cardData.melodyText,
+                hide_create_btn: true // Default to true for new cards as requested
             })
         });
 
@@ -449,7 +450,8 @@ app.get('/api/cards/:id', async (req, res) => {
                 occasion: row.occasion,
                 lyrics: row.lyrics,
                 audioUrl: row.audio_url,
-                melodyText: row.melody_text
+                melodyText: row.melody_text,
+                hideCreateBtn: row.hide_create_btn
             });
         } else {
             res.status(404).json({ error: 'Card not found' });

@@ -806,6 +806,13 @@ body.is-received-card .voice-controls {
     background: rgba(15, 23, 42, 0.4);
 }
 
+.disabled-btn {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(0.5);
+    background: linear-gradient(135deg, #4b5563, #374151) !important;
+}
+
 .hidden-badge {
     background: #ef4444;
     color: white;
