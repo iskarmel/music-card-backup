@@ -827,6 +827,68 @@ body.is-received-card .voice-controls {
     font-weight: 400;
 }
 
+/* Admin / Catalog Manager */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    margin: 30px 0;
+}
+
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.admin-form .form-group label {
+    font-size: 0.8rem;
+}
+
+.admin-form input:not([type="file"]) {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.admin-input-file {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.admin-submit-btn {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.track-toggle-visibility {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.track-toggle-visibility:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.track-toggle-visibility.is-hidden {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+@media (max-width: 480px) {
+    .admin-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .hidden-badge {
     background: #ef4444;
     color: white;

@@ -108,6 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="track-play-preview" aria-label="Preview" data-url="${track.url}">
                     <i class="ph-bold ph-play"></i> Слушать
                 </button>
+                ${isAdvanced ? `
+                <button class="track-toggle-visibility ${track.is_hidden ? 'is-hidden' : ''}" data-id="${track.id}">
+                    <i class="ph-bold ${track.is_hidden ? 'ph-eye' : 'ph-eye-slash'}"></i> ${track.is_hidden ? 'Показать' : 'Скрыть'}
+                </button>` : ''}
             `;
 
             // Selection Logic
@@ -157,6 +161,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
             trackCatalogContainer.appendChild(trackItem);
         });
+
+        // Add Toggle Visibility Event Listeners (Advanced mode only)
+        if (window.location.pathname.includes('advanced.html')) {
+            trackCatalogContainer.querySelectorAll('.track-toggle-visibility').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const trackId = btn.dataset.id;
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i>...';
+                    btn.disabled = true;
+
+                    try {
+                        const response = await fetch(`/api/beats/${trackId}/toggle-visibility`, { method: 'POST' });
+                        if (response.ok) {
+                            renderTrackCatalog(); // Refresh the list
+                        } else {
+                            const err = await response.json();
+                            alert('Ошибка: ' + err.error);
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        }
+                    } catch (err) {
+                        console.error('Toggle failed:', err);
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+
 
         // Auto-select the first track by default if available
         const firstTrackBtn = trackCatalogContainer.querySelector('.track-item');
@@ -934,5 +968,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 form.classList.remove('hidden');
                 alert("К сожалению, открытка не найдена. Создайте свою!");
             });
+    }
+
+    // --- Catalog Manager Logic (Advanced Mode Only) ---
+    const catalogManagerForm = document.getElementById('catalog-manager-form');
+    if (catalogManagerForm) {
+        catalogManagerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = catalogManagerForm.querySelector('.admin-submit-btn');
+            const originalText = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Добавляем...';
+
+            const formData = new FormData();
+            formData.append('audio', document.getElementById('new-track-file').files[0]);
+            formData.append('title', document.getElementById('new-track-title').value.trim());
+            formData.append('genre', document.getElementById('new-track-genre').value.trim());
+            formData.append('style', document.getElementById('new-track-style').value.trim());
+            formData.append('icon', 'ph-music-note'); // Default icon
+
+            try {
+                const response = await fetch('/api/catalog-add', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert('Трек успешно добавлен в каталог!');
+                    catalogManagerForm.reset();
+                    renderTrackCatalog();
+                } else {
+                    const err = await response.json();
+                    alert('Ошибка при добавлении: ' + (err.error || 'Неизвестная ошибка'));
+                }
+            } catch (err) {
+                console.error('Upload failed:', err);
+                alert('Сетевая ошибка при загрузке трека.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
     }
 });

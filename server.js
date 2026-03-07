@@ -424,6 +424,108 @@ app.post('/api/cards', async (req, res) => {
     }
 });
 
+// Toggle beat visibility
+app.post('/api/beats/:id/toggle-visibility', async (req, res) => {
+    const { id } = req.params;
+    try {
+        // First get current state
+        const getRes = await fetch(`${supabaseUrl}/rest/v1/beats?id=eq.${id}`, {
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`
+            }
+        });
+
+        if (!getRes.ok) throw new Error('Failed to fetch track');
+        const tracks = await getRes.json();
+        if (tracks.length === 0) return res.status(404).json({ error: 'Track not found' });
+
+        const currentHidden = tracks[0].is_hidden || false;
+
+        const patchRes = await fetch(`${supabaseUrl}/rest/v1/beats?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ is_hidden: !currentHidden })
+        });
+
+        if (!patchRes.ok) throw new Error('Failed to update visibility');
+        const updated = await patchRes.json();
+        res.json(updated[0]);
+    } catch (error) {
+        console.error('Error toggling visibility:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add new track to catalog
+app.post('/api/catalog-add', upload.single('audio'), async (req, res) => {
+    try {
+        const { title, genre, icon, style } = req.body;
+        const file = req.file;
+
+        if (!file || !title || !genre) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // 1. Upload to Supabase Storage
+        const fileExt = file.originalname.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const uploadRes = await fetch(`${supabaseUrl}/storage/v1/object/audio-uploads/${fileName}`, {
+            method: 'POST',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': file.mimetype
+            },
+            body: file.buffer
+        });
+
+        if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            throw new Error(err.message || 'Storage upload failed');
+        }
+
+        const audioUrl = `${supabaseUrl}/storage/v1/object/public/audio-uploads/${fileName}`;
+
+        // 2. Add to beats table
+        const insertRes = await fetch(`${supabaseUrl}/rest/v1/beats`, {
+            method: 'POST',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                title,
+                genre,
+                icon: icon || 'ph-music-note',
+                style: style || 'Нейтральный',
+                url: audioUrl,
+                is_hidden: false,
+                uses_count: 0
+            })
+        });
+
+        if (!insertRes.ok) {
+            const err = await insertRes.json();
+            throw new Error(err.message || 'Database insert failed');
+        }
+
+        const newTrack = await insertRes.json();
+        res.json(newTrack[0]);
+    } catch (error) {
+        console.error('Error adding to catalog:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Retrieve a card by ID
 app.get('/api/cards/:id', async (req, res) => {
     try {
