@@ -106,7 +106,7 @@ app.get('/api/beats', async (req, res) => {
         let queryUrl = `${supabaseUrl}/rest/v1/beats?select=*`;
 
         if (!includeHidden) {
-            queryUrl += '&is_hidden=eq.false';
+            queryUrl += '&or=(is_hidden.is.null,is_hidden.eq.false)';
         }
 
         const supabaseResponse = await fetch(queryUrl, {
