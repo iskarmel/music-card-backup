@@ -775,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentCardId = null;
 
         // Reset the button to original state
-        createNewBtn.textContent = 'Создать новую открытку';
+        createNewBtn.innerHTML = 'Создать новую открытку';
         createNewBtn.disabled = false;
         createNewBtn.classList.remove('disabled-btn');
 
@@ -881,11 +881,11 @@ document.addEventListener('DOMContentLoaded', () => {
         originalAudioUrl = data.audioUrl; // Fallback for loaded cards
 
         if (data.hideCreateBtn) {
-            createNewBtn.textContent = 'Опция появится позже';
+            createNewBtn.innerHTML = 'Создать новую открытку<br><span class="btn-subtitle">Опция появится позже</span>';
             createNewBtn.disabled = true;
             createNewBtn.classList.add('disabled-btn');
         } else {
-            createNewBtn.textContent = 'Создать новую открытку';
+            createNewBtn.innerHTML = 'Создать новую открытку';
             createNewBtn.disabled = false;
             createNewBtn.classList.remove('disabled-btn');
         }
