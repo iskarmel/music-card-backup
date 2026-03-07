@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceBtn.innerHTML = '<i class="ph-bold ph-microphone-stage"></i> Озвучить ИИ';
         voiceSelect.style.display = ''; // Show selector again if hidden
 
-        const voiceControls = document.querySelector('.voice-controls');
+        const voiceControls = document.querySelector('.voice-controls:not(.hidden)');
         if (voiceControls) voiceControls.style.display = '';
 
         document.body.classList.remove('is-received-card');
