@@ -772,6 +772,13 @@ document.addEventListener('DOMContentLoaded', () => {
         isReceivedCard = false;
         currentCardId = null;
 
+        // Fetch the catalog again in case new tracks were added
+        renderTrackCatalog();
+
+        // Trigger change events to update UI based on default radio selections
+        document.getElementById('src-catalog').dispatchEvent(new Event('change', { bubbles: true }));
+        document.getElementById('mode-ai').dispatchEvent(new Event('change', { bubbles: true }));
+
         // Switch Views
         songLyrics.classList.remove('hidden');
         resultView.classList.add('hidden');
