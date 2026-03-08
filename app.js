@@ -77,126 +77,120 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Render Track Catalog ---
     const renderTrackCatalog = async () => {
+        const hiddingSelectors = ['#track-catalog', '#admin-track-list'];
+        const containers = hiddingSelectors.map(s => document.getElementById(s.replace('#', ''))).filter(c => c);
+
+        if (containers.length === 0) return;
+
         try {
             const isAdvanced = window.location.pathname.includes('advanced.html');
             const url = isAdvanced ? '/api/beats?includeHidden=true' : '/api/beats';
             const response = await fetch(url);
             if (response.ok) {
                 TRACK_CATALOG = await response.json();
-                // Sort by uses_count descending
                 TRACK_CATALOG.sort((a, b) => (b.uses_count || 0) - (a.uses_count || 0));
-            } else {
-                console.error("Failed to load catalog from DB");
             }
         } catch (e) {
             console.error("Error fetching catalog:", e);
         }
 
-        trackCatalogContainer.innerHTML = '';
+        containers.forEach(container => {
+            container.innerHTML = '';
+            const isMainCatalog = container.id === 'track-catalog';
 
-        TRACK_CATALOG.forEach(track => {
-            const trackItem = document.createElement('div');
-            trackItem.className = `track-item ${track.is_hidden ? 'is-hidden-track' : ''}`;
-            trackItem.dataset.id = track.id;
+            TRACK_CATALOG.forEach(track => {
+                const trackItem = document.createElement('div');
+                trackItem.className = `track-item ${track.is_hidden ? 'is-hidden-track' : ''}`;
+                trackItem.dataset.id = track.id;
 
-            trackItem.innerHTML = `
-                <i class="ph ${track.icon} track-icon"></i>
-                <div style="flex: 1; min-width: 0;">
-                    <span class="track-title">${track.title} ${track.is_hidden ? '<span class="hidden-badge">СКРЫТ</span>' : ''}</span>
-                    <span class="track-genre">${track.genre} ${track.uses_count ? `(🔥 ${track.uses_count})` : ''}</span>
-                </div>
-                <button class="track-play-preview" aria-label="Preview" data-url="${track.url}">
-                    <i class="ph-bold ph-play"></i> Слушать
-                </button>
-                ${isAdvanced ? `
-                <button class="track-toggle-visibility ${track.is_hidden ? 'is-hidden' : ''}" data-id="${track.id}">
-                    <i class="ph-bold ${track.is_hidden ? 'ph-eye' : 'ph-eye-slash'}"></i> ${track.is_hidden ? 'Показать' : 'Скрыть'}
-                </button>` : ''}
-            `;
+                trackItem.innerHTML = `
+                    <i class="ph ${track.icon} track-icon"></i>
+                    <div style="flex: 1; min-width: 0;">
+                        <span class="track-title">${track.title} ${track.is_hidden ? '<span class="hidden-badge">СКРЫТ</span>' : ''}</span>
+                        <span class="track-genre">${track.genre} ${track.uses_count ? `(🔥 ${track.uses_count})` : ''}</span>
+                    </div>
+                    <button class="track-play-preview" aria-label="Preview" data-url="${track.url}">
+                        <i class="ph-bold ph-play"></i> Слушать
+                    </button>
+                    ${isAdvanced ? `
+                    <button class="track-toggle-visibility ${track.is_hidden ? 'is-hidden' : ''}" data-id="${track.id}">
+                        <i class="ph-bold ${track.is_hidden ? 'ph-eye' : 'ph-eye-slash'}"></i> ${track.is_hidden ? 'Показать' : 'Скрыть'}
+                    </button>` : ''}
+                `;
 
-            // Selection Logic
-            trackItem.addEventListener('click', (e) => {
-                if (e.target.closest('.track-play-preview')) return; // Ignore if clicked play preview button
+                // Selection Logic (only for main catalog)
+                if (isMainCatalog) {
+                    trackItem.addEventListener('click', (e) => {
+                        if (e.target.closest('.track-play-preview')) return;
+                        if (e.target.closest('.track-toggle-visibility')) return;
 
-                // Deselect others
-                trackCatalogContainer.querySelectorAll('.track-item').forEach(el => el.classList.remove('selected'));
-                // Select this one
-                trackItem.classList.add('selected');
-                selectedTrackId = track.id;
-            });
-
-            // Preview Play Logic
-            const previewBtn = trackItem.querySelector('.track-play-preview');
-            previewBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Avoid triggering selection
-
-                if (previewAudio && previewAudio.src === track.url && !previewAudio.paused) {
-                    // Stop playing currently playing track
-                    previewAudio.pause();
-                    trackItem.classList.remove('playing');
-                    previewBtn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
-                } else {
-                    // Stop previous audio if exists
-                    if (previewAudio) {
-                        previewAudio.pause();
-                        trackCatalogContainer.querySelectorAll('.track-item').forEach(el => {
-                            el.classList.remove('playing');
-                            el.querySelector('.track-play-preview').innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
-                        });
-                    }
-
-                    // Play this audio
-                    previewAudio = new Audio(track.url);
-                    previewAudio.volume = 0.2; // Keep preview quiet
-                    previewAudio.play();
-                    trackItem.classList.add('playing');
-                    previewBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Стоп';
-
-                    previewAudio.addEventListener('ended', () => {
-                        trackItem.classList.remove('playing');
-                        previewBtn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
+                        trackCatalogContainer.querySelectorAll('.track-item').forEach(el => el.classList.remove('selected'));
+                        trackItem.classList.add('selected');
+                        selectedTrackId = track.id;
                     });
                 }
-            });
 
-            trackCatalogContainer.appendChild(trackItem);
-        });
-
-        // Add Toggle Visibility Event Listeners (Advanced mode only)
-        if (window.location.pathname.includes('advanced.html')) {
-            trackCatalogContainer.querySelectorAll('.track-toggle-visibility').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
+                // Preview Play Logic
+                const previewBtn = trackItem.querySelector('.track-play-preview');
+                previewBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const trackId = btn.dataset.id;
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i>...';
-                    btn.disabled = true;
-
-                    try {
-                        const response = await fetch(`/api/beats/${trackId}/toggle-visibility`, { method: 'POST' });
-                        if (response.ok) {
-                            renderTrackCatalog(); // Refresh the list
-                        } else {
-                            const err = await response.json();
-                            alert('Ошибка: ' + err.error);
-                            btn.innerHTML = originalText;
-                            btn.disabled = false;
+                    if (previewAudio && previewAudio.src === track.url && !previewAudio.paused) {
+                        previewAudio.pause();
+                        trackItem.classList.remove('playing');
+                        previewBtn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
+                    } else {
+                        if (previewAudio) {
+                            previewAudio.pause();
+                            document.querySelectorAll('.track-item').forEach(el => {
+                                el.classList.remove('playing');
+                                const btn = el.querySelector('.track-play-preview');
+                                if (btn) btn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
+                            });
                         }
-                    } catch (err) {
-                        console.error('Toggle failed:', err);
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
+                        previewAudio = new Audio(track.url);
+                        previewAudio.volume = 0.2;
+                        previewAudio.play();
+                        trackItem.classList.add('playing');
+                        previewBtn.innerHTML = '<i class="ph-bold ph-stop"></i> Стоп';
+                        previewAudio.addEventListener('ended', () => {
+                            trackItem.classList.remove('playing');
+                            previewBtn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
+                        });
                     }
                 });
+
+                // Visibility Toggle Logic
+                if (isAdvanced) {
+                    const toggleBtn = trackItem.querySelector('.track-toggle-visibility');
+                    if (toggleBtn) {
+                        toggleBtn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const trackId = toggleBtn.dataset.id;
+                            toggleBtn.disabled = true;
+                            toggleBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i>';
+                            try {
+                                const response = await fetch(`/api/beats/${trackId}/toggle-visibility`, { method: 'POST' });
+                                if (response.ok) {
+                                    renderTrackCatalog();
+                                }
+                            } catch (err) {
+                                console.error('Toggle failed:', err);
+                            } finally {
+                                toggleBtn.disabled = false;
+                            }
+                        });
+                    }
+                }
+
+                container.appendChild(trackItem);
             });
-        }
 
-
-        // Auto-select the first track by default if available
-        const firstTrackBtn = trackCatalogContainer.querySelector('.track-item');
-        if (firstTrackBtn) {
-            firstTrackBtn.click();
-        }
+            // Auto-select first in main catalog if empty selected
+            if (isMainCatalog && !selectedTrackId) {
+                const first = container.querySelector('.track-item');
+                if (first) first.click();
+            }
+        });
     };
 
     // Initialize catalog UI
