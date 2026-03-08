@@ -77,26 +77,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Render Track Catalog ---
     const renderTrackCatalog = async () => {
-        const hiddingSelectors = ['#track-catalog', '#admin-track-list'];
-        const containers = hiddingSelectors.map(s => document.getElementById(s.replace('#', ''))).filter(c => c);
-
-        if (containers.length === 0) return;
+        console.log('Rendering track catalog...');
+        const isAdvanced = window.location.pathname.includes('advanced.html');
+        const url = isAdvanced ? '/api/beats?includeHidden=true' : '/api/beats';
 
         try {
-            const isAdvanced = window.location.pathname.includes('advanced.html');
-            const url = isAdvanced ? '/api/beats?includeHidden=true' : '/api/beats';
             const response = await fetch(url);
             if (response.ok) {
-                TRACK_CATALOG = await response.json();
-                TRACK_CATALOG.sort((a, b) => (b.uses_count || 0) - (a.uses_count || 0));
+                const data = await response.json();
+                console.log(`Fetched ${data.length} tracks`);
+                TRACK_CATALOG = data.sort((a, b) => (b.uses_count || 0) - (a.uses_count || 0));
             }
         } catch (e) {
             console.error("Error fetching catalog:", e);
         }
 
-        containers.forEach(container => {
+        const mainContainer = document.getElementById('track-catalog');
+        const adminContainer = document.getElementById('admin-track-list');
+        const allContainers = [mainContainer, adminContainer].filter(c => c);
+
+        console.log(`Populating ${allContainers.length} containers`);
+
+        allContainers.forEach(container => {
             container.innerHTML = '';
-            const isMainCatalog = container.id === 'track-catalog';
+            const isMain = container.id === 'track-catalog';
 
             TRACK_CATALOG.forEach(track => {
                 const trackItem = document.createElement('div');
@@ -118,13 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>` : ''}
                 `;
 
-                // Selection Logic (only for main catalog)
-                if (isMainCatalog) {
+                // Selection Logic (Creation Form only)
+                if (isMain) {
                     trackItem.addEventListener('click', (e) => {
                         if (e.target.closest('.track-play-preview')) return;
                         if (e.target.closest('.track-toggle-visibility')) return;
 
-                        trackCatalogContainer.querySelectorAll('.track-item').forEach(el => el.classList.remove('selected'));
+                        mainContainer.querySelectorAll('.track-item').forEach(el => el.classList.remove('selected'));
                         trackItem.classList.add('selected');
                         selectedTrackId = track.id;
                     });
@@ -143,8 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             previewAudio.pause();
                             document.querySelectorAll('.track-item').forEach(el => {
                                 el.classList.remove('playing');
-                                const btn = el.querySelector('.track-play-preview');
-                                if (btn) btn.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
+                                const b = el.querySelector('.track-play-preview');
+                                if (b) b.innerHTML = '<i class="ph-bold ph-play"></i> Слушать';
                             });
                         }
                         previewAudio = new Audio(track.url);
@@ -159,18 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
 
-                // Visibility Toggle Logic
+                // Visibility Toggle
                 if (isAdvanced) {
                     const toggleBtn = trackItem.querySelector('.track-toggle-visibility');
                     if (toggleBtn) {
                         toggleBtn.addEventListener('click', async (e) => {
                             e.stopPropagation();
-                            const trackId = toggleBtn.dataset.id;
                             toggleBtn.disabled = true;
                             toggleBtn.innerHTML = '<i class="ph ph-circle-notch ph-spin"></i>';
                             try {
-                                const response = await fetch(`/api/beats/${trackId}/toggle-visibility`, { method: 'POST' });
-                                if (response.ok) {
+                                const res = await fetch(`/api/beats/${track.id}/toggle-visibility`, { method: 'POST' });
+                                if (res.ok) {
                                     renderTrackCatalog();
                                 }
                             } catch (err) {
@@ -185,8 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.appendChild(trackItem);
             });
 
-            // Auto-select first in main catalog if empty selected
-            if (isMainCatalog && !selectedTrackId) {
+            // Default selection
+            if (isMain && !selectedTrackId) {
                 const first = container.querySelector('.track-item');
                 if (first) first.click();
             }
