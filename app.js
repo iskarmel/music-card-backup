@@ -77,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Render Track Catalog ---
     const renderTrackCatalog = async () => {
-        console.log('Rendering track catalog...');
         const isAdvanced = window.location.pathname.includes('advanced.html');
         const url = isAdvanced ? '/api/beats?includeHidden=true' : '/api/beats';
 
@@ -85,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-                console.log(`Fetched ${data.length} tracks`);
                 TRACK_CATALOG = data.sort((a, b) => (b.uses_count || 0) - (a.uses_count || 0));
             }
         } catch (e) {
@@ -95,8 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const mainContainer = document.getElementById('track-catalog');
         const adminContainer = document.getElementById('admin-track-list');
         const allContainers = [mainContainer, adminContainer].filter(c => c);
-
-        console.log(`Populating ${allContainers.length} containers`);
 
         allContainers.forEach(container => {
             container.innerHTML = '';
