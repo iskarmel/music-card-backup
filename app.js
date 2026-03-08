@@ -944,6 +944,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.body.classList.add('is-received-card');
         isReceivedCard = true;
+
+        // Hide Catalog Manager for recipients
+        const adminSection = document.querySelector('.catalog-manager-section');
+        if (adminSection) adminSection.style.display = 'none';
     };
 
     if (cardId) {
